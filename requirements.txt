@@ -1,0 +1,6 @@
+requests
+python-dotenv
+Adafruit-Blinka
+adafruit-circuitpython-bmp280
+RPi.GPIO
+adafruit-io

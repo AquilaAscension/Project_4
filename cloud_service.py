@@ -7,14 +7,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Config from .env
 WRITE_KEY = os.getenv("THINGSPEAK_WRITE_KEY")
 TALKBACK_ID = os.getenv("TALKBACK_ID")
 TALKBACK_KEY = os.getenv("TALKBACK_API_KEY")
+
+# Thresholds with Hysteresis
 HOT_THRESHOLD = float(os.getenv("HOT_THRESHOLD", 25.0))
-
+COLD_THRESHOLD = float(os.getenv("COLD_THRESHOLD", 18.0))
 HYSTERESIS_OFFSET = 0.5
-LOG_FILE = "greenhouse_data.csv"
 
+LOG_FILE = "greenhouse_data.csv"
 last_cloud_update = 0
 pump_active = False 
 
@@ -30,37 +33,42 @@ def process_logic_and_cloud(temp, pressure):
     global last_cloud_update, pump_active
     current_time = time.time()
     manual_pulse = False
+    system_status = "NORMAL"
 
-    # 1. Automatic Logic
+    # 1. Automatic Control Logic (Hysteresis)
     if temp > HOT_THRESHOLD:
         pump_active = True
     elif temp < (HOT_THRESHOLD - HYSTERESIS_OFFSET):
         pump_active = False
 
-    # 2. Cloud Communication (Every 16s)
+    # 2. Status Determination
+    if temp < COLD_THRESHOLD:
+        system_status = "COLD"
+    elif pump_active:
+        system_status = "HOT"
+
+    # 3. Cloud Communication (Every 16s)
     if current_time - last_cloud_update >= 16:
         url = "https://api.thingspeak.com/update"
         payload = {"api_key": WRITE_KEY, "field1": temp, "field2": pressure}
         
         try:
-            # Send both fields
             r = requests.get(url, params=payload, timeout=5)
-            print(f"Cloud Sync Status: {r.status_code} | Sent T:{temp} P:{pressure}")
             log_locally(temp, pressure)
             last_cloud_update = current_time
         except Exception as e:
             print(f"Cloud Sync Failed: {e}")
 
-        # Check TalkBack
+        # Check TalkBack for Manual Pulse
         tb_url = f"https://api.thingspeak.com/talkbacks/{TALKBACK_ID}/commands/execute.json"
         try:
             resp = requests.get(tb_url, params={"api_key": TALKBACK_KEY}, timeout=5)
             if resp.status_code == 200 and resp.text.strip():
-                cmd_data = resp.json()
-                if cmd_data.get("command_string") == "PUMP_ON":
-                    print("!!! MANUAL PULSE RECEIVED FROM CLOUD !!!")
+                if resp.json().get("command_string") == "PUMP_ON":
+                    print("!!! MANUAL PULSE TRIGGERED !!!")
                     manual_pulse = True
         except:
             pass
 
-    return pump_active or manual_pulse
+    # We return: should the pump run, and what is the environmental status
+    return (pump_active or manual_pulse), system_status
