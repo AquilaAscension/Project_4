@@ -38,12 +38,20 @@
                 const res = await fetch(`https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds/last.json?api_key=${READ_KEY}`);
                 const data = await res.json();
                 
+                // Safety check: if field is null/missing, use a default value to prevent NaN
+                const tempVal = data.field1 ? parseFloat(data.field1) : 0;
+                const presVal = data.field2 ? parseFloat(data.field2) : 1013.25;
+                
+                console.log("Raw Data:", data); // Check your console to see if field2 is coming through
+
                 // Update Gauges
-                drawGauge('temp_gauge', 'Temp', parseFloat(data.field1), 0, 50);
-                drawGauge('pres_gauge', 'hPa', parseFloat(data.field2), 900, 1100);
+                drawGauge('temp_gauge', 'Temp', tempVal, 0, 50);
+                drawGauge('pres_gauge', 'hPa', presVal, 900, 1100);
                 
                 document.getElementById('status').innerText = "Last Updated: " + new Date(data.created_at).toLocaleTimeString();
-            } catch (e) { console.log("Fetch error"); }
+            } catch (e) { 
+                document.getElementById('status').innerText = "Syncing..."; 
+            }
             setTimeout(refreshData, 15000);
         }
 
