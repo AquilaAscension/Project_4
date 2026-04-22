@@ -1,40 +1,69 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>IoT Greenhouse Panel</title>
+    <title>IoT Greenhouse Pro</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eceff1; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .dashboard { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 300px; }
-        .temp-val { font-size: 3.5rem; font-weight: bold; color: #2e7d32; margin: 1rem 0; }
-        .status { color: #546e7a; font-size: 0.9rem; }
+        body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: white; text-align: center; }
+        .flex-container { display: flex; justify-content: center; gap: 20px; padding: 20px; }
+        .card { background: #2d2d2d; padding: 20px; border-radius: 15px; min-width: 200px; }
+        button { padding: 15px 30px; font-size: 18px; cursor: pointer; border-radius: 10px; border: none; background: #e74c3c; color: white; transition: 0.3s; }
+        button:hover { background: #c0392b; transform: scale(1.05); }
     </style>
 </head>
 <body>
-    <div class="dashboard">
-        <h2>Greenhouse</h2>
-        <div id="temp" class="temp-val">--°C</div>
-        <div id="status" class="status">Connecting...</div>
+    <h1>Greenhouse Command Center</h1>
+    
+    <div class="flex-container">
+        <div id="gauge_temp" class="card"></div>
+        <div id="gauge_pres" class="card"></div>
+    </div>
+
+    <div class="card" style="margin: 20px auto; width: 300px;">
+        <h3>Manual Control</h3>
+        <button onclick="sendCommand('PUMP_ON')">Trigger Water Pump</button>
+        <p id="status" style="font-size: 12px; color: #888;">Standby</p>
     </div>
 
     <script>
-        const CHANNEL_ID = "3353895"; 
         const READ_KEY = "VI1SIJ9X0KFI5ZT4";
+        const CHANNEL_ID = "3353895";
+        const TALKBACK_KEY = "V0XJMORMV3J2JJNO";
+        const TALKBACK_ID = "56829";
 
-        async function fetchInfo() {
-            try {
-                const url = `https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds/last.json?api_key=${READ_KEY}`;
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                document.getElementById('temp').innerText = parseFloat(data.field1).toFixed(1) + "°C";
-                document.getElementById('status').innerText = "Updated: " + new Date(data.created_at).toLocaleTimeString();
-            } catch (e) {
-                document.getElementById('status').innerText = "Offline";
-            }
+        google.charts.load('current', {'packages':['gauge']});
+        google.charts.setOnLoadCallback(drawGauges);
+
+        async function drawGauges() {
+            const response = await fetch(`https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds/last.json?api_key=${READ_KEY}`);
+            const data = await response.json();
+
+            var gData = google.visualization.arrayToDataTable([
+                ['Label', 'Value'],
+                ['Temp', parseFloat(data.field1)],
+                ['Pressure', parseFloat(data.field2) / 10] // Scaled for gauge
+            ]);
+
+            var options = { width: 400, height: 160, redFrom: 30, redTo: 50, yellowFrom:25, yellowTo: 30, minorTicks: 5 };
+            var chartT = new google.visualization.Gauge(document.getElementById('gauge_temp'));
+            var chartP = new google.visualization.Gauge(document.getElementById('gauge_pres'));
+            
+            chartT.draw(gData, options);
+            // Re-fetch every 15s
+            setTimeout(drawGauges, 15000);
         }
 
-        setInterval(fetchInfo, 15000);
-        fetchInfo();
+        async function sendCommand(cmd) {
+            document.getElementById('status').innerText = "Sending command...";
+            const url = `https://api.thingspeak.com/talkbacks/${TALKBACK_ID}/commands.json`;
+            const params = new URLSearchParams({
+                'api_key': TALKBACK_KEY,
+                'command_string': cmd
+            });
+
+            await fetch(url, { method: 'POST', body: params });
+            document.getElementById('status').innerText = "Command Queued!";
+        }
     </script>
 </body>
 </html>
