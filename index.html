@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IoT Greenhouse Panel</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eceff1; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .dashboard { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 300px; }
+        .temp-val { font-size: 3.5rem; font-weight: bold; color: #2e7d32; margin: 1rem 0; }
+        .status { color: #546e7a; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <h2>Greenhouse</h2>
+        <div id="temp" class="temp-val">--°C</div>
+        <div id="status" class="status">Connecting...</div>
+    </div>
+
+    <script>
+        const CHANNEL_ID = "3353895"; 
+        const READ_KEY = "VI1SIJ9X0KFI5ZT4";
+
+        async function fetchInfo() {
+            try {
+                const url = `https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds/last.json?api_key=${READ_KEY}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                document.getElementById('temp').innerText = parseFloat(data.field1).toFixed(1) + "°C";
+                document.getElementById('status').innerText = "Updated: " + new Date(data.created_at).toLocaleTimeString();
+            } catch (e) {
+                document.getElementById('status').innerText = "Offline";
+            }
+        }
+
+        setInterval(fetchInfo, 15000);
+        fetchInfo();
+    </script>
+</body>
+</html>
