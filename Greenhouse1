@@ -6,12 +6,16 @@ import RPi.GPIO as GPIO
 from Adafruit_IO import Client
 
 # --- Configuration ---
-ADAFRUIT_IO_KEY = 'Kcirtip'
-ADAFRUIT_IO_USERNAME = 'aio_sDjy733gY3MPeAHiwd7mR3oh9e1h'
+ADAFRUIT_IO_KEY = 'aio_RGtx41yaA7xGojddFf4OszsND7zK'
+ADAFRUIT_IO_USERNAME = 'Kcirtip'
 
 # GPIO Pins
 PUMP_PIN = 17 
 LED_PIN = 22  # Connect LED to GPIO 22
+
+#Demo Mode to randomize the temp values
+DEMO_MODE = True # Set to False for normal operation
+demo_temp = 20.0 # Starting point
 
 # Setup GPIO
 GPIO.setmode(GPIO.BCM)
@@ -29,8 +33,8 @@ bmp280 = adafruit_bmp280.Adafruit_BMP280_I2C(i2c, address=0x76)
 aio = Client(ADAFRUIT_IO_USERNAME, ADAFRUIT_IO_KEY)
 
 # Thresholds
-HOT_THRESHOLD = 25.0
-COLD_THRESHOLD = 20.0
+HOT_THRESHOLD = 24.6
+COLD_THRESHOLD = 24.4
 
 try:
     print("System running...")
@@ -38,8 +42,16 @@ try:
         temperature = bmp280.temperature
         print(f"Temperature: {temperature:.2f} C")
         
+
+	    if DEMO_MODE:
+			demo_temp += 1.0 # Simulate temperature rising
+			if demo_temp > 30.0: demo_temp = 10.0 # Reset range
+				temperature = demo_temp
+		else:
+			temperature = bmp280.temperature # Normal operation
+        
         # Send to Cloud
-        aio.send('temperature', temperature)
+        aio.send('temp', temperature)
 
         # Logic for HOT (Pump)
         if temperature > HOT_THRESHOLD:
