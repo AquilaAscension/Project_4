@@ -10,7 +10,7 @@
             --text: #37474F;
             --shadow: rgba(163, 177, 198, 0.7);
             --highlight: rgba(255, 255, 255, 0.8);
-            --accent: #4CAF50; /* Primary Green */
+            --accent: #4CAF50;
             --accent-disabled: #A5D6A7;
             --btn-on: #43A047;
             --btn-on-glow: rgba(76, 175, 80, 0.4);
@@ -18,47 +18,37 @@
 
         body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
 
-        /* Main Container (Neumorphic Card) */
         .card { background-color: var(--bg); padding: 40px; border-radius: 30px; box-shadow: 10px 10px 20px var(--shadow), -10px -10px 20px var(--highlight); width: 100%; max-width: 480px; position: relative; overflow: hidden; text-align: center; }
 
-        /* 15-Second Progress/Countdown Loader Bar */
-        .update-loader { position: absolute; top: 0; left: 0; height: 6px; background-color: var(--accent); width: 100%; transform-origin: left; transform: scaleX(1); transition: transform 15s linear; /* Smooth fill over 15s */ }
+        .update-loader { position: absolute; top: 0; left: 0; height: 6px; background-color: var(--accent); width: 100%; transform-origin: left; transform: scaleX(1); transition: transform 15s linear; }
         .update-loader.reset { transition: transform 0s linear; transform: scaleX(0); }
 
-        h1 { font-size: 1.6rem; font-weight: 600; margin-bottom: 40px; color: #2c3e50; }
+        h1 { font-size: 1.6rem; font-weight: 600; margin-bottom: 30px; color: #2c3e50; }
 
-        /* Gauge Section Layout */
-        .gauges-container { display: flex; justify-content: space-around; margin-bottom: 40px; gap: 20px; }
+        .gauges-container { display: flex; justify-content: space-around; margin-bottom: 30px; gap: 20px; }
 
-        /* Custom Circle Gauges */
-        .gauge-module { position: relative; width: 150px; height: 150px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        
-        /* The underlying neumorphic "hole" */
+        .gauge-module { position: relative; width: 140px; height: 140px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .gauge-bg { position: absolute; width: 120px; height: 120px; border-radius: 50%; background-color: var(--bg); box-shadow: inset 8px 8px 15px var(--shadow), inset -8px -8px 15px var(--highlight); }
-        
-        .gauge-value { font-size: 2.2rem; font-weight: 700; color: var(--text); z-serif; position: relative; z-index: 10; }
+        .gauge-value { font-size: 2rem; font-weight: 700; color: var(--text); position: relative; z-index: 10; }
         .gauge-label { font-size: 0.85rem; font-weight: 500; color: #78909C; position: relative; z-index: 10; margin-top: 5px; }
 
-        /* Standardized Neumorphic Button */
+        /* --- NEW CAMERA UI --- */
+        .camera-container { margin-bottom: 30px; padding: 10px; background-color: var(--bg); border-radius: 20px; box-shadow: inset 8px 8px 15px var(--shadow), inset -8px -8px 15px var(--highlight); }
+        .camera-container img { width: 100%; height: auto; border-radius: 12px; display: block; object-fit: cover; max-height: 250px; background-color: #cfd8e3; }
+        .camera-label { margin-top: 10px; font-size: 0.8rem; font-weight: 600; color: #78909C; letter-spacing: 1px; }
+
         button { border: none; font-family: 'Segoe UI', font-weight: 600; font-size: 1rem; color: #FFF; background-color: var(--accent); padding: 18px 0; width: 100%; border-radius: 15px; cursor: pointer; transition: all 0.2s ease; box-shadow: 6px 6px 12px var(--shadow), -6px -6px 12px var(--highlight); -webkit-tap-highlight-color: transparent; }
-
         button:hover { background-color: var(--btn-on); box-shadow: 3px 3px 6px var(--shadow), -3px -3px 6px var(--highlight); }
-        
         button:active { background-color: var(--btn-on); box-shadow: inset 4px 4px 10px rgba(0,0,0,0.2); transform: translateY(1px); }
-
-        /* Button Processing/Disabled State */
         button:disabled { background-color: var(--accent-disabled); color: #FFF; cursor: not-allowed; box-shadow: none; opacity: 0.7; }
 
-        /* Footer Status Info */
         #status-bar { margin-top: 25px; font-size: 0.75rem; color: #90A4AE; letter-spacing: 0.5px; }
-
     </style>
 </head>
 <body>
 
     <div class="card">
         <div id="loaderBar" class="update-loader"></div>
-
         <h1>Greenhouse Pro</h1>
 
         <div class="gauges-container">
@@ -74,8 +64,12 @@
             </div>
         </div>
 
-        <button id="pumpBtn" onclick="triggerPulse()">Trigger 5s Water Pulse</button>
+        <div class="camera-container">
+            <img id="plantCam" src="latest_photo.jpg" alt="Waiting for camera..." onerror="this.onerror=null; this.src=''; this.alt='Camera Offline';">
+            <div class="camera-label">LIVE FEED</div>
+        </div>
 
+        <button id="pumpBtn" onclick="triggerPulse()">Trigger 5s Water Pulse</button>
         <div id="status-bar">Connecting to ThingSpeak...</div>
     </div>
 
@@ -83,15 +77,14 @@
         const CHANNEL_ID = "3353895"; 
         const READ_KEY = "VI1SIJ9X0KFI5ZT4";   
         const TB_ID = "56829";       
-        const TB_KEY = "V0XJMORMV3J2JJNO";     
+        const TB_KEY = "V0XJMORMV3J2JJNO";   
 
-        const fetchInterval = 15000; // ThingSpeak limit (15s)
+        const fetchInterval = 15000; 
         const loader = document.getElementById('loaderBar');
 
-        // Main Initialization
         function init() {
-            refreshData(); // Initial load
-            resetLoader();  // Start visual countdown
+            refreshData(); 
+            resetLoader();  
             setInterval(function() {
                 refreshData();
                 resetLoader();
@@ -103,15 +96,12 @@
                 const res = await fetch(`https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds/last.json?api_key=${READ_KEY}`);
                 const data = await res.json();
                 
-                // Safety parse data. Using "1013" default for pressure to keep it clean.
-                const temp = data.field1 ? parseFloat(data.field1).toFixed(1) : "0.0";
-                const pres = data.field2 ? parseFloat(data.field2).toFixed(0) : "1013";
+                document.getElementById('tempVal').innerText = data.field1 ? parseFloat(data.field1).toFixed(1) : "0.0";
+                document.getElementById('presVal').innerText = data.field2 ? parseFloat(data.field2).toFixed(0) : "1013";
 
-                // Update UI
-                document.getElementById('tempVal').innerText = temp;
-                document.getElementById('presVal').innerText = pres;
+                // Update Camera Feed (The ?t= timestamp forces the browser to bypass its cache)
+                document.getElementById('plantCam').src = "latest_photo.jpg?t=" + new Date().getTime();
 
-                // Simple Timestamp formatting
                 const timestamp = new Date(data.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 document.getElementById('status-bar').innerText = `SYS SYNC: OK | DATA AT: ${timestamp}`;
             
@@ -120,47 +110,35 @@
             }
         }
 
-        // --- Managing the 15s Delay Perception ---
         function resetLoader() {
-            // Instantly empty the bar
             loader.style.transition = 'transform 0s linear';
             loader.style.transform = 'scaleX(0)';
-            
-            // Re-trigger the smooth 15s fill after a micro-delay
             setTimeout(function() {
                 loader.style.transition = 'transform 15s linear';
                 loader.style.transform = 'scaleX(1)';
             }, 50); 
         }
 
-        // --- Control Logic ---
         async function triggerPulse() {
             const btn = document.getElementById('pumpBtn');
             const status = document.getElementById('status-bar');
 
-            // Set Loading State
             btn.disabled = true;
             btn.innerText = "COMMANDING...";
             status.innerText = "SYS STATUS: Queueing Manual Override...";
 
-            // Send to TalkBack API
             const url = `https://api.thingspeak.com/talkbacks/${TB_ID}/commands.json`;
             const params = new URLSearchParams({ 'api_key': TB_KEY, 'command_string': 'PUMP_ON' });
 
             try {
                 const res = await fetch(url, { method: 'POST', body: params });
-                
                 if (res.ok) {
                     status.innerText = "SYS STATUS: OK | Override Queued";
-                    // Visually change button to indicate activation "active" state
                     btn.style.backgroundColor = 'var(--btn-on)'; 
                     btn.style.boxShadow = `0 0 15px var(--btn-on-glow), inset 2px 2px 5px rgba(0,0,0,0.2)`;
                     btn.innerText = "ACTIVATING...";
-                    
-                    // The Pi will likely pick it up in 15s, but we'll release UI control in 7s.
                     setTimeout(resetButton, 7000); 
                 } else { throw new Error("API Reject"); }
-
             } catch (e) {
                 status.innerText = "SYS STATUS: ERROR | Command Failed";
                 resetButton();
@@ -169,16 +147,13 @@
 
         function resetButton() {
             const btn = document.getElementById('pumpBtn');
-            // Restore default neumorphic style
             btn.disabled = false;
             btn.style.backgroundColor = 'var(--accent)';
             btn.style.boxShadow = '6px 6px 12px var(--shadow), -6px -6px 12px var(--highlight)';
             btn.innerText = "Trigger 5s Water Pulse";
         }
 
-        // Start everything
         init();
-
     </script>
 </body>
 </html>

@@ -3,18 +3,26 @@ import busio
 import adafruit_bmp280
 import RPi.GPIO as GPIO
 import time
+import os
+import subprocess
+from datetime import datetime
 
 # Pin Definitions
 PUMP_PIN = 17 
 LED_PIN = 22  
 
+# Camera Setup
+PHOTO_DIR = "/home/pi/greenhouse_photos"
+os.makedirs(PHOTO_DIR, exist_ok=True)
+# This is where your script runs, we'll save a web-friendly copy here
+WEB_DIR = os.getcwd() 
+
 # Setup
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(PUMP_PIN, GPIO.OUT, initial=GPIO.HIGH) # Off (Active Low)
+GPIO.setup(PUMP_PIN, GPIO.OUT, initial=GPIO.HIGH)
 GPIO.setup(LED_PIN, GPIO.OUT, initial=GPIO.LOW)
 
-# Initialize Sensor (Fixed at 0x76)
 i2c = busio.I2C(board.SCL, board.SDA)
 try:
     bmp280 = adafruit_bmp280.Adafruit_BMP280_I2C(i2c, address=0x76)
@@ -24,10 +32,8 @@ except Exception as e:
     sensor_online = False
 
 def get_readings():
-    """Returns (temp, pressure) or (None, None) if sensor fails."""
     global sensor_online
     if not sensor_online:
-        # Try a quick re-init if it was offline
         try:
             global bmp280
             bmp280 = adafruit_bmp280.Adafruit_BMP280_I2C(i2c, address=0x76)
@@ -38,31 +44,39 @@ def get_readings():
     try:
         return round(bmp280.temperature, 2), round(bmp280.pressure, 2)
     except:
-        sensor_online = False # Set offline for next attempt
+        sensor_online = False 
         return None, None
 
 def set_actuators(pump_on, heartbeat_state):
-    """
-    pump_on: Boolean to control relay
-    heartbeat_state: String ('NORMAL', 'ERROR', 'PULSE')
-    """
-    # 1. Pump Control
     if pump_on:
-        GPIO.output(PUMP_PIN, GPIO.LOW)  # ON
+        GPIO.output(PUMP_PIN, GPIO.LOW)  
     else:
-        GPIO.output(PUMP_PIN, GPIO.HIGH) # OFF
+        GPIO.output(PUMP_PIN, GPIO.HIGH) 
 
-    # 2. Heartbeat LED Logic
     if heartbeat_state == 'PULSE':
-        GPIO.output(LED_PIN, GPIO.HIGH) # Solid ON
+        GPIO.output(LED_PIN, GPIO.HIGH) 
     elif heartbeat_state == 'ERROR':
-        # Fast toggle handled by main.py timing
         current_state = GPIO.input(LED_PIN)
         GPIO.output(LED_PIN, not current_state)
     else:
-        # Normal Toggle
         current_state = GPIO.input(LED_PIN)
         GPIO.output(LED_PIN, not current_state)
+
+def take_photo():
+    """Asynchronous camera trigger. Won't freeze the main loop!"""
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    archive_path = f"{PHOTO_DIR}/plant_{timestamp}.jpg"
+    latest_path = os.path.join(WEB_DIR, "latest_photo.jpg")
+
+    # This command takes the photo, then copies it to 'latest_photo.jpg'
+    cmd = f"rpicam-still -o {archive_path} --width 1920 --height 1080 --nopreview && cp {archive_path} {latest_path}"
+    
+    try:
+        # Popen runs the process in the background
+        subprocess.Popen(cmd, shell=True)
+        print("📸 [CAMERA] Snap triggered in background...")
+    except Exception as e:
+        print(f"Camera Error: {e}")
 
 def cleanup_hardware():
     print("Cleaning up GPIO...")
