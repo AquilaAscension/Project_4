@@ -45,7 +45,7 @@ PHOTO_DIR = "/home/pi/greenhouse_photos"
 os.makedirs(PHOTO_DIR, exist_ok=True)
 
 # Set the interval (e.g., 3600 seconds = 1 hour)
-PHOTO_INTERVAL = 3600 
+PHOTO_INTERVAL = 10 
 last_photo_time = 0
 
 def take_photo():
@@ -96,12 +96,9 @@ try:
             GPIO.output(PUMP_PIN, GPIO.HIGH)
             GPIO.output(LED_PIN, GPIO.LOW)
             
-        # --- In your main loop ---
-        while True:
-        # 1. Read your BMP280/Sensors here...
     
-        # 2. Check if it is time to take a photo
-            current_time = time.time()
+        #Check if it is time to take a photo
+        current_time = time.time()
         if current_time - last_photo_time >= PHOTO_INTERVAL:
             take_photo()
             last_photo_time = current_time
