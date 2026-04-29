@@ -65,7 +65,7 @@
         </div>
 
         <div class="camera-container">
-            <img id="plantCam" src="latest_photo.jpg" alt="Waiting for camera..." onerror="this.onerror=null; this.src=''; this.alt='Camera Offline';">
+            <img id="plantCam" src="latest_photo.jpg" alt="Waiting for camera...">
             <div class="camera-label">LIVE FEED</div>
         </div>
 
@@ -81,8 +81,39 @@
 
         const fetchInterval = 15000; 
         const loader = document.getElementById('loaderBar');
+        const plantCam = document.getElementById('plantCam');
+        const streamHost = window.location.hostname || 'localhost';
+        const cameraStreamUrl = `http://${streamHost}:8001/stream.mjpg`;
+        let usingSnapshotFallback = false;
+        let streamRetryTimer = null;
+
+        function snapshotUrl() {
+            return "latest_photo.jpg?t=" + new Date().getTime();
+        }
+
+        function handleSnapshotError() {
+            plantCam.alt = "Camera Offline";
+        }
+
+        function handleCameraStreamError() {
+            usingSnapshotFallback = true;
+            plantCam.onerror = handleSnapshotError;
+            plantCam.alt = "Live stream unavailable";
+            plantCam.src = snapshotUrl();
+            clearTimeout(streamRetryTimer);
+            streamRetryTimer = setTimeout(connectCameraFeed, 5000);
+        }
+
+        function connectCameraFeed() {
+            clearTimeout(streamRetryTimer);
+            usingSnapshotFallback = false;
+            plantCam.onerror = handleCameraStreamError;
+            plantCam.alt = "Connecting to live camera...";
+            plantCam.src = cameraStreamUrl + "?t=" + new Date().getTime();
+        }
 
         function init() {
+            connectCameraFeed();
             refreshData(); 
             resetLoader();  
             setInterval(function() {
@@ -99,8 +130,9 @@
                 document.getElementById('tempVal').innerText = data.field1 ? parseFloat(data.field1).toFixed(1) : "0.0";
                 document.getElementById('presVal').innerText = data.field2 ? parseFloat(data.field2).toFixed(0) : "1013";
 
-                // Update Camera Feed (The ?t= timestamp forces the browser to bypass its cache)
-                document.getElementById('plantCam').src = "latest_photo.jpg?t=" + new Date().getTime();
+                if (usingSnapshotFallback) {
+                    plantCam.src = snapshotUrl();
+                }
 
                 const timestamp = new Date(data.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 document.getElementById('status-bar').innerText = `SYS SYNC: OK | DATA AT: ${timestamp}`;

@@ -19,7 +19,9 @@ HYSTERESIS_OFFSET = 0.5
 
 LOG_FILE = "greenhouse_data.csv"
 last_cloud_update = 0
-pump_active = False 
+pump_active = False
+manual_pulse_until = 0
+MANUAL_PULSE_SECONDS = 5
 
 def log_locally(temp, pressure):
     file_exists = os.path.isfile(LOG_FILE)
@@ -30,9 +32,9 @@ def log_locally(temp, pressure):
         writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), temp, pressure])
 
 def process_logic_and_cloud(temp, pressure):
-    global last_cloud_update, pump_active
+    global last_cloud_update, pump_active, manual_pulse_until
     current_time = time.time()
-    manual_pulse = False
+    manual_pulse = current_time < manual_pulse_until
     system_status = "NORMAL"
 
     # 1. Automatic Control Logic (Hysteresis)
@@ -66,6 +68,7 @@ def process_logic_and_cloud(temp, pressure):
             if resp.status_code == 200 and resp.text.strip():
                 if resp.json().get("command_string") == "PUMP_ON":
                     print("!!! MANUAL PULSE TRIGGERED !!!")
+                    manual_pulse_until = current_time + MANUAL_PULSE_SECONDS
                     manual_pulse = True
         except:
             pass
